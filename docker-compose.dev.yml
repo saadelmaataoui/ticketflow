@@ -1,0 +1,39 @@
+services:
+    mongodb:
+        image: mongo:7.0
+        container_name: mongodb
+        ports:
+            - "27017:27017"
+        volumes:
+            - mongodb_data:/data/db
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+            MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+        healthcheck:
+            test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        networks:
+            - ticketflow-net
+    redis:
+        image: redis:7.4-alpine
+        container_name: redis
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis_data:/data
+        command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+        healthcheck:
+            test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        networks:
+            - ticketflow-net
+volumes:
+    mongodb_data:
+    redis_data:
+networks:
+    ticketflow-net:
+        driver: bridge
