@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: event-service
+  mongodb:
+    database: ticketflow_events
+    username: ${MONGO_USERNAME:ticketflow_admin}
+    password: ${MONGO_PASSWORD:dev_mongo_pass}
+    authentication-database: admin
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ${REDIS_PASSWORD:dev_redis_pass}
+server:
+      port: 8081
+management:
+      endpoints:
+        web:
+          exposure:
+            include: "health,info"
+      endpoint:
+        health:
+          show-details: always
