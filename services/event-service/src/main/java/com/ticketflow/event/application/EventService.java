@@ -2,6 +2,8 @@ package com.ticketflow.event.application;
 
 import com.ticketflow.event.api.CreateEventRequest;
 import com.ticketflow.event.api.EventResponse;
+import com.ticketflow.event.common.exception.EventNotFoundException;
+import com.ticketflow.event.common.exception.InvalidEventStateException;
 import com.ticketflow.event.domain.Event;
 import com.ticketflow.event.domain.EventStatus;
 import com.ticketflow.event.domain.TicketTier;
@@ -33,7 +35,7 @@ public class EventService {
 
     public EventResponse getEventById(String id) {
         Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + id));
+                .orElseThrow(() -> new EventNotFoundException("Event not found with id: " + id));
         return eventMapper.toResponse(event);
     }
 
@@ -44,18 +46,18 @@ public class EventService {
 
     public EventResponse publishEvent(String id) {
         Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + id));
+                .orElseThrow(() -> new EventNotFoundException("Event not found with id: " + id));
         if (event.getStatus() != null && event.getStatus().equals(EventStatus.PUBLISHED)) {
-            throw new IllegalStateException("Event is already published");
+            throw new InvalidEventStateException("Event is already published");
         }
         if (event.getStatus() != null && event.getStatus().equals(EventStatus.CANCELLED)) {
-            throw new IllegalStateException("Cannot publish a cancelled event");
+            throw new InvalidEventStateException("Cannot publish a cancelled event");
         }
         if (event.getTicketTiers() == null || event.getTicketTiers().isEmpty()) {
-            throw new IllegalStateException("Cannot publish an event without ticket tiers");
+            throw new InvalidEventStateException("Cannot publish an event without ticket tiers");
         }
         if (event.getStartsAt() == null || event.getStartsAt().isBefore(Instant.now())) {
-            throw new IllegalStateException("Cannot publish an event that has already started");
+            throw new InvalidEventStateException("Cannot publish an event that has already started");
         }
         event.setStatus(EventStatus.PUBLISHED);
         Event updatedEvent = eventRepository.save(event);
@@ -64,12 +66,12 @@ public class EventService {
 
     public EventResponse cancelEvent(String id) {
         Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + id));
+                .orElseThrow(() -> new EventNotFoundException("Event not found with id: " + id));
         if (event.getStatus() != null && event.getStatus().equals(EventStatus.CANCELLED)) {
-            throw new IllegalStateException("Event is already cancelled");
+            throw new InvalidEventStateException("Event is already cancelled");
         }
         if (event.getStartsAt() == null || event.getStartsAt().isBefore(Instant.now())) {
-            throw new IllegalStateException("Cannot cancel an event that has already started");
+            throw new InvalidEventStateException("Cannot cancel an event that has already started");
         }
         event.setStatus(EventStatus.CANCELLED);
         Event updatedEvent = eventRepository.save(event);
@@ -78,12 +80,12 @@ public class EventService {
 
     public EventResponse updateEvent(String id, CreateEventRequest request) {
         Event existingEvent = eventRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found with id: " + id));
+                .orElseThrow(() -> new EventNotFoundException("Event not found with id: " + id));
         if (existingEvent.getStatus() != null && existingEvent.getStatus().equals(EventStatus.CANCELLED)) {
-            throw new IllegalStateException("Cannot update a cancelled event");
+            throw new InvalidEventStateException("Cannot update a cancelled event");
         }
         if (existingEvent.getStatus() != null && existingEvent.getStatus().equals(EventStatus.PUBLISHED)) {
-            throw new IllegalStateException("Cannot update a published event");
+            throw new InvalidEventStateException("Cannot update a published event");
         }
         Event updatedEvent = eventMapper.toEntity(request);
         validateEvent(updatedEvent);
@@ -106,6 +108,9 @@ public class EventService {
         }
         int totalSeats = 0;
         for (TicketTier ticketTier : event.getTicketTiers()) {
+            if (ticketTier == null) {
+                throw new IllegalArgumentException("Ticket tier cannot be null");
+            }
             totalSeats += ticketTier.totalSeats();
         }
         if (totalSeats > event.getVenue().capacity()) {
