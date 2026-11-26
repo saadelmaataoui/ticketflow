@@ -1,4 +1,4 @@
-package com.ticketflow.event.event.domain;
+package com.ticketflow.event.domain;
 
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -33,10 +33,11 @@ public class Event {
     private Instant updatedAt;
     @Version
     private Long version;
+
     // Default constructor
     public Event() {}
-    // getter and setter methods
 
+    // getter and setter methods
     public String getCategory() {
         return category;
     }

@@ -1,4 +1,4 @@
-package com.ticketflow.event.event.domain;
+package com.ticketflow.event.domain;
 
 import java.math.BigDecimal;
 
