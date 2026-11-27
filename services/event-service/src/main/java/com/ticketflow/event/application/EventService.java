@@ -9,6 +9,8 @@ import com.ticketflow.event.domain.EventStatus;
 import com.ticketflow.event.domain.TicketTier;
 import com.ticketflow.event.mapper.EventMapper;
 import com.ticketflow.event.repository.EventRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -17,7 +19,7 @@ import java.time.Instant;
 
 @Service
 public class EventService {
-
+    private static final String EVENT_NOT_FOUND_MESSAGE = "Event not found with id: ";
     private final EventRepository eventRepository;
     private final EventMapper eventMapper;
 
@@ -33,9 +35,10 @@ public class EventService {
         return eventMapper.toResponse(savedEvent);
     }
 
+    @Cacheable(cacheNames = "events", key = "#id")
     public EventResponse getEventById(String id) {
         Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new EventNotFoundException("Event not found with id: " + id));
+                .orElseThrow(() -> new EventNotFoundException(EVENT_NOT_FOUND_MESSAGE + id));
         return eventMapper.toResponse(event);
     }
 
@@ -44,9 +47,10 @@ public class EventService {
         return events.map(eventMapper::toResponse);
     }
 
+    @CacheEvict(cacheNames = "events", key = "#id")
     public EventResponse publishEvent(String id) {
         Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new EventNotFoundException("Event not found with id: " + id));
+                .orElseThrow(() -> new EventNotFoundException(EVENT_NOT_FOUND_MESSAGE + id));
         if (event.getStatus() != null && event.getStatus().equals(EventStatus.PUBLISHED)) {
             throw new InvalidEventStateException("Event is already published");
         }
@@ -64,9 +68,10 @@ public class EventService {
         return eventMapper.toResponse(updatedEvent);
     }
 
+    @CacheEvict(cacheNames = "events", key = "#id")
     public EventResponse cancelEvent(String id) {
         Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new EventNotFoundException("Event not found with id: " + id));
+                .orElseThrow(() -> new EventNotFoundException(EVENT_NOT_FOUND_MESSAGE + id));
         if (event.getStatus() != null && event.getStatus().equals(EventStatus.CANCELLED)) {
             throw new InvalidEventStateException("Event is already cancelled");
         }
@@ -78,9 +83,10 @@ public class EventService {
         return eventMapper.toResponse(updatedEvent);
     }
 
+    @CacheEvict(cacheNames = "events", key = "#id")
     public EventResponse updateEvent(String id, CreateEventRequest request) {
         Event existingEvent = eventRepository.findById(id)
-                .orElseThrow(() -> new EventNotFoundException("Event not found with id: " + id));
+                .orElseThrow(() -> new EventNotFoundException(EVENT_NOT_FOUND_MESSAGE + id));
         if (existingEvent.getStatus() != null && existingEvent.getStatus().equals(EventStatus.CANCELLED)) {
             throw new InvalidEventStateException("Cannot update a cancelled event");
         }
